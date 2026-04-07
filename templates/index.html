@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форма обращения сотрудников</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 650px; margin: 30px auto; padding: 20px; background: #f5f7fa; color: #333; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 10px; }
+        
+        .info-banner {
+            background-color: #e3f2fd; border-left: 5px solid #2196F3; color: #0d47a1;
+            padding: 15px; margin-bottom: 20px; border-radius: 4px; font-size: 14px; line-height: 1.5;
+        }
+
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: bold; color: #444; }
+        input, select, textarea { 
+            width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; 
+            box-sizing: border-box; font-size: 14px; transition: border 0.2s;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #007bff; outline: none; }
+        textarea { resize: vertical; }
+        button[type="submit"] {
+            width: 100%; padding: 12px; background: #28a745; color: white; border: none; 
+            border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: background 0.2s;
+        }
+        button[type="submit"]:hover { background: #218838; }
+        small { color: #666; display: block; margin-top: 5px; }
+
+        .flash { padding: 12px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; }
+        .flash.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* Модальное окно */
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;
+        }
+        .modal-content {
+            background: white; padding: 25px; border-radius: 8px; max-width: 420px; width: 90%;
+            position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3); text-align: center;
+        }
+        .modal-close { position: absolute; top: 10px; right: 15px; font-size: 22px; cursor: pointer; color: #888; }
+        .modal-text { white-space: pre-line; margin: 15px 0; font-size: 15px; color: #333; line-height: 1.6; }
+        .modal-btn {
+            padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px;
+        }
+        .modal-btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h2>Служба поддержки</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+           <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- ИНФОРМАЦИОННЫЙ БАННЕР -->
+    <div class="info-banner">
+        Если у вас вопросы пол двум и более продуктам, направьте обращение по основной тематике и приложите список договоров по которым возникли вопросы. Во вложение указывайте номер договора и табельный номер.
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="email">Ваш корпоративный Email:</label>
+            <input type="email" id="email" name="email" required placeholder="name@company.ru">
+        </div>
+
+        <div class="form-group">
+            <label for="topic">Тема обращения:</label>
+            <select id="topic" name="topic" required>
+                <option value="">Выберите тему...</option>
+                {% for topic in topics %}
+                    <option value="{{ topic }}">{{ topic }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- ПОДКАТЕГОРИЯ (скрывается для Квартал) -->
+        <div class="form-group" id="subcategory-group" style="display:none;">
+            <label for="subcategory">Подкатегория:</label>
+            <select id="subcategory" name="subcategory">
+                <option value="">Выберите подкатегорию...</option>
+            </select>
+        </div>
+
+        <!-- Поля для темы "Квартал" -->
+        <div class="form-group" id="role-group" style="display:none;">
+            <label for="role">Роль:</label>
+            <select id="role" name="role">
+                <option value="">Выберите роль...</option>
+            </select>
+        </div>
+        <div class="form-group" id="indicator-group" style="display:none;">
+            <label for="indicator">Показатель:</label>
+            <select id="indicator" name="indicator">
+                <option value="">Сначала выберите роль...</option>
+            </select>
+        </div>
+        <div class="form-group" id="plan_fact-group" style="display:none;">
+            <label for="plan_fact">Тип:</label>
+            <select id="plan_fact" name="plan_fact">
+                <option value="">Выберите...</option>
+                {% for pf in plan_fact %}
+                    <option value="{{ pf }}">{{ pf }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Описание проблемы:</label>
+            <textarea id="description" name="description" rows="4" required placeholder="Опишите вашу проблему..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="files">Прикрепить файлы:</label>
+            <input type="file" id="files" name="files" multiple>
+            <small>* Максимальный размер: 10 МБ. Форматы: PDF, DOC, DOCX, XLS, XLSX, PNG, JPG</small>
+        </div>
+
+        <button type="submit">Отправить обращение</button>
+    </form>
+
+    <!-- ВСПЛЫВАЮЩЕЕ ОКНО -->
+    <div id="invest-modal" class="modal-overlay">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <h3>⚠️ Обратите внимание</h3>
+            <div class="modal-text">Оплата за оформленный продукт производится за клиентов до 70 лет.
+При передачи документов партнёрам в установленный срок.
+Перезакрепление производится через партнёров.</div>
+            <button class="modal-btn" onclick="closeModal()">Понятно</button>
+        </div>
+    </div>
+
+    <script>
+        // Данные из Flask (сохраняют оригинальные пробелы для бэкенда)
+        const subcategoriesData = {{ subcategories | tojson }};
+        const indicatorsData = {{ indicators_by_role | tojson }};
+        const rolesList = {{ roles | tojson }};
+
+        const topicSelect = document.getElementById('topic');
+        const subcategorySelect = document.getElementById('subcategory');
+        const roleSelect = document.getElementById('role');
+        const indicatorSelect = document.getElementById('indicator');
+        
+        // Скрываем подкатегорию по умолчанию (покажем после загрузки JS)
+        document.getElementById('subcategory-group').style.display = 'none';
+
+        function getDictValue(dict, key) {
+            if (!key) return null;
+            const k = key.trim();
+            return dict[k] || dict[k + ' '] || dict[k] || null;
+        }
+
+        function populateSelect(selectEl, items) {
+            selectEl.innerHTML = '<option value="">Выберите...</option>';
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item; // Оставляем оригинал (с пробелами) для отправки формы
+                opt.textContent = item.trim(); // Убираем пробелы только визуально
+                selectEl.appendChild(opt);
+            });
+        }
+
+        // 1. Смена темы
+        topicSelect.addEventListener('change', function() {
+            const selectedTopic = this.value;
+            const isKvartal = selectedTopic.trim() === 'Квартал';
+
+            // Сброс всех зависимых полей
+            subcategorySelect.value = '';
+            roleSelect.value = '';
+            indicatorSelect.value = '';
+            document.getElementById('plan_fact').value = '';
+
+            // ✅ ЯВНОЕ СКРЫТИЕ/ПОКАЗ ПОЛЕЙ
+            document.getElementById('subcategory-group').style.display = isKvartal ? 'none' : 'block';
+            document.getElementById('role-group').style.display = isKvartal ? 'block' : 'none';
+            document.getElementById('indicator-group').style.display = isKvartal ? 'block' : 'none';
+            document.getElementById('plan_fact-group').style.display = isKvartal ? 'block' : 'none';
+
+            if (isKvartal) {
+                // Заполняем роли, подкатегорию очищаем
+                subcategorySelect.innerHTML = '';
+                populateSelect(roleSelect, rolesList);
+                indicatorSelect.innerHTML = '<option value="">Сначала выберите роль...</option>';
+            } else {
+                // Заполняем подкатегории, поля Квартала очищаем
+                roleSelect.innerHTML = '<option value="">Выберите роль...</option>';
+                indicatorSelect.innerHTML = '<option value="">Сначала выберите роль...</option>';
+                const subs = getDictValue(subcategoriesData, selectedTopic);
+                if (subs && subs.length > 0) {
+                    populateSelect(subcategorySelect, subs);
+                } else {
+                    subcategorySelect.innerHTML = '<option value="">Нет доступных подкатегорий</option>';
+                }
+            }
+            checkPopupCondition();
+        });
+
+        // 2. Смена подкатегории (триггер модалки)
+        subcategorySelect.addEventListener('change', checkPopupCondition);
+
+        // 3. Смена роли (цепочка для Квартал)
+        roleSelect.addEventListener('change', function() {
+            const selectedRole = this.value;
+            indicatorSelect.innerHTML = '<option value="">Выберите показатель...</option>';
+            indicatorSelect.value = '';
+            const indicators = getDictValue(indicatorsData, selectedRole);
+            if (indicators) populateSelect(indicatorSelect, indicators);
+        });
+
+        // 4. Логика всплывающего окна
+        function checkPopupCondition() {
+            const topic = topicSelect.value.trim();
+            const sub = subcategorySelect.value.trim();
+            if ((topic === 'БМ' || topic === 'ГФК') && sub === 'Инвестиционные продукты УК') {
+                showModal();
+            }
+        }
+
+        function showModal() { document.getElementById('invest-modal').style.display = 'flex'; }
+        function closeModal() { document.getElementById('invest-modal').style.display = 'none'; }
+        window.onclick = function(event) {
+            if (event.target === document.getElementById('invest-modal')) closeModal();
+        }
+
+        // Инициализация при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            topicSelect.dispatchEvent(new Event('change'));
+        });
+    </script>
+</body>
+</html>
