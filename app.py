@@ -12,10 +12,12 @@ from config import (
 )
 
 app = Flask(__name__)
-app.secret_key = config.SECRET_KEY
+app.secret_key = SECRET_KEY  # ИСПРАВЛЕНО: убрал "config."
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def send_email(sender_email, subject, body, recipient, cc_email=None, attachments=None):
     msg = MIMEMultipart()
@@ -56,6 +58,7 @@ def send_email(sender_email, subject, body, recipient, cc_email=None, attachment
     except Exception as e:
         print(f"Ошибка отправки: {e}")
         return False
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -127,6 +130,7 @@ def index():
                          roles=ROLES,
                          indicators_by_role=INDICATORS_BY_ROLE,
                          plan_fact=PLAN_FACT)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
