@@ -2,15 +2,22 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # Загружает переменные из .env файла
+# Загружаем переменные из файла .env (только для локальной разработки)
+load_dotenv()
 
+# ========== НАСТРОЙКИ ПОЧТЫ ==========
 SMTP_SERVER = "smtp.yandex.com"
 SMTP_PORT = 587
 SMTP_LOGIN = "pirotimber@yandex.ru"
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Берётся из .env или из окружения
-#
-SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key-for-render")
-# Получатели по темам
+# Пароль берётся из переменных окружения (безопасно!)
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+
+# ========== СЕКРЕТНЫЙ КЛЮЧ ДЛЯ FLASK ==========
+# Для Render: добавьте переменную SECRET_KEY в Environment Variables
+# Для локальной разработки: добавьте SECRET_KEY в файл .env
+SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key-change-me-in-production")
+
+# ========== КОМУ ОТПРАВЛЯТЬ ПИСЬМА ==========
 TOPIC_RECIPIENTS = {
     "ЗП": "pirotimber@yandex.ru",
     "БМ": "pirotimber@yandex.ru",
@@ -19,7 +26,7 @@ TOPIC_RECIPIENTS = {
     "Общая": "pirotimber@yandex.ru"
 }
 
-# Подкатегории для каждой темы
+# ========== ПОДКАТЕГОРИИ ДЛЯ КАЖДОЙ ТЕМЫ ==========
 SUBCATEGORIES = {
     "ЗП": ["АЗК", "ФОТ", "КСП"],
     "БМ": ["Кредиты", "Кредитные карты", "Комиссионные продукты", 
@@ -30,18 +37,20 @@ SUBCATEGORIES = {
     "Общая": []
 }
 
-# Для темы "Квартал" - РОЛИ И ПОКАЗАТЕЛИ
+# ========== ДЛЯ ТЕМЫ "Квартал" ==========
+# Список доступных ролей
 ROLES = ['роль1', 'роль2', 'роль3']
 
-# Показатели для каждой роли (словарь)
+# Показатели для каждой роли
 INDICATORS_BY_ROLE = {
     "роль1": ["Показатель1", "Показатель2"],
     "роль2": ["Показатель3", "Показатель4"],
     "роль3": ["Показатель5", "Показатель6"]
 }
 
+# Тип: План или Факт
 PLAN_FACT = ["План", "Факт"]
 
-# Настройки файлов
-MAX_FILE_SIZE = 10 * 1024 * 1024
+# ========== НАСТРОЙКИ ЗАГРУЗКИ ФАЙЛОВ ==========
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 МБ
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'}
