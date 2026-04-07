@@ -9,6 +9,7 @@ SMTP_PORT = 587
 SMTP_LOGIN = "pirotimber@yandex.ru"
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # Берётся из .env или из окружения
 #
+SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key-for-render")
 # Получатели по темам
 TOPIC_RECIPIENTS = {
     "ЗП": "pirotimber@yandex.ru",
