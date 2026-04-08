@@ -1,129 +1,136 @@
-import os
+from flask import Flask, render_template, request, flash, redirect, url_for
 import smtplib
-import logging
-import threading
-from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
-from flask import Flask, request, jsonify
+import os
+from config import (
+    SMTP_SERVER, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD,
+    TOPIC_RECIPIENTS, SUBCATEGORIES, ROLES, INDICATORS_BY_ROLE, PLAN_FACT,
+    MAX_FILE_SIZE, ALLOWED_EXTENSIONS
+)
 
 app = Flask(__name__)
+app.secret_key = "super_secret_key"  # ВОЗВРАЩАЕМ ПРОСТОЙ КЛЮЧ
 
-# ─────────────────────────────────────────────────────────────
-# Настройка логирования
-# ─────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────
-# Конфигурация (берётся из переменных окружения Render)
-# ─────────────────────────────────────────────────────────────
-SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", SMTP_USER)
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def _send_email_task(to_email, subject, description, recipient, cc_email, attachments):
-    """Внутренняя функция отправки. Вызывается в отдельном потоке."""
+
+def send_email(sender_email, subject, body, recipient, cc_email=None, attachments=None):
+    msg = MIMEMultipart()
+    msg['From'] = SMTP_LOGIN
+    msg['To'] = recipient
+    msg['Subject'] = subject
+    
+    if cc_email:
+        msg['Cc'] = cc_email
+
+    full_body = f"Обращение от сотрудника: {sender_email}\n\nОписание проблемы:\n{body}"
+    msg.attach(MIMEText(full_body, 'plain'))
+
+    # Прикрепляем файлы
+    if attachments:
+        for file_path, filename in attachments:
+            try:
+                with open(file_path, "rb") as attachment:
+                    part = MIMEBase('application', 'octet-stream')
+                    part.set_payload(attachment.read())
+                
+                encoders.encode_base64(part)
+                part.add_header(
+                    'Content-Disposition',
+                    f'attachment; filename="{filename}"'
+                )
+                msg.attach(part)
+            except Exception as e:
+                print(f"Ошибка прикрепления файла {filename}: {e}")
+
     try:
-        msg = MIMEMultipart()
-        msg['From'] = SENDER_EMAIL
-        msg['To'] = to_email
-        msg['Subject'] = subject
-        if cc_email:
-            msg['Cc'] = cc_email
-
-        msg.attach(MIMEText(description, 'plain', 'utf-8'))
-
-        # Вложения (ожидается список путей к файлам)
-        if attachments:
-            for file_path in attachments:
-                try:
-                    with open(file_path, "rb") as f:
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(f.read())
-                        encoders.encode_base64(part)
-                        part.add_header(
-                            'Content-Disposition',
-                            f'attachment; filename="{os.path.basename(file_path)}"'
-                        )
-                        msg.attach(part)
-                except Exception as e:
-                    logger.warning(f"⚠️ Пропущено вложение {file_path}: {e}")
-
-        logger.info(f"🔌 Подключение к {SMTP_SERVER}:{SMTP_PORT}...")
-        
-        # 🔑 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ: явный timeout=10 секунд
-        if SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, timeout=10)
-        else:
-            server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=10)
-            server.starttls()
-
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        
-        recipients = [to_email]
-        if cc_email:
-            recipients.append(cc_email)
-
-        server.sendmail(SENDER_EMAIL, recipients, msg.as_string())
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        server.starttls()
+        server.login(SMTP_LOGIN, SMTP_PASSWORD)
+        server.send_message(msg)
         server.quit()
-        logger.info(f"✅ Письмо успешно отправлено на {to_email}")
-
-    except smtplib.SMTPConnectError as e:
-        logger.error(f"❌ Ошибка подключения к SMTP (проверьте сервер/порт/файрвол): {e}")
-    except smtplib.SMTPAuthenticationError as e:
-        logger.error(f"❌ Ошибка логина/пароля SMTP: {e}")
-    except TimeoutError:
-        logger.error("❌ Таймаут подключения к SMTP-серверу")
+        return True
     except Exception as e:
-        logger.exception(f"❌ Критическая ошибка отправки: {e}")
+        print(f"Ошибка отправки: {e}")
+        return False
 
-@app.route("/", methods=["POST"])
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    try:
-        # Поддержка и JSON, и form-data
-        data = request.get_json(silent=True)
-        if not data:
-            data = request.form.to_dict()
+    if request.method == 'POST':
+        email = request.form.get('email')
+        topic = request.form.get('topic')
+        description = request.form.get('description')
+        
+        recipient = TOPIC_RECIPIENTS.get(topic)
 
-        email = data.get("email")
-        email_subject = data.get("email_subject", data.get("subject", "Без темы"))
-        description = data.get("description", "")
-        recipient = data.get("recipient", email)
-        cc_email = data.get("cc_email", email)
-        attachments = data.get("attachments", [])
+        if not recipient:
+            flash("Ошибка: Неверная тема обращения", "error")
+            return redirect(url_for('index'))
 
-        if not email:
-            return jsonify({"status": "error", "message": "Поле 'email' обязательно"}), 400
+        # Формируем тему в зависимости от выбранной категории
+        if topic == "Квартал":
+            # Для Квартал: Тема - Роль - Показатель - Тип
+            role = request.form.get('role')
+            indicator = request.form.get('indicator')
+            plan_fact = request.form.get('plan_fact')
+            
+            if role and indicator and plan_fact:
+                email_subject = f"{topic} - {role} - {indicator} - {plan_fact}"
+            else:
+                flash("Для темы 'Квартал' необходимо заполнить все поля", "error")
+                return redirect(url_for('index'))
+        else:
+            # Для остальных тем: Тема - Подкатегория
+            subcategory = request.form.get('subcategory')
+            if subcategory:
+                email_subject = f"{topic} - {subcategory}"
+            else:
+                email_subject = topic
 
-        # 🚀 Запускаем отправку в фоне, чтобы Gunicorn не убивал воркер
-        thread = threading.Thread(
-            target=_send_email_task,
-            args=(email, email_subject, description, recipient, cc_email, attachments),
-            daemon=True
-        )
-        thread.start()
+        # Обработка загруженных файлов
+        attachments = []
+        if 'files' in request.files:
+            files = request.files.getlist('files')
+            for file in files:
+                if file and file.filename and allowed_file(file.filename):
+                    if file.content_length > MAX_FILE_SIZE:
+                        flash(f"Файл {file.filename} слишком большой (макс. 10 МБ)", "error")
+                        return redirect(url_for('index'))
+                    
+                    # Сохраняем файл временно
+                    temp_path = os.path.join('/tmp', file.filename)
+                    file.save(temp_path)
+                    attachments.append((temp_path, file.filename))
+                elif file.filename:
+                    flash(f"Файл {file.filename} имеет недопустимый формат", "error")
+                    return redirect(url_for('index'))
 
-        logger.info(f"📤 Запрос принят. Отправка на {email} запущена в фоне.")
-        return jsonify({
-            "status": "accepted",
-            "message": "Письмо принято в обработку"
-        }), 202  # 202 Accepted — запрос принят, обработка идёт асинхронно
+        try:
+            if send_email(email, email_subject, description, recipient, cc_email=email, attachments=attachments):
+                flash("Ваше обращение успешно отправлено! Копия отправлена вам на почту.", "success")
+            else:
+                flash("Ошибка при отправке письма. Попробуйте позже.", "error")
+        finally:
+            # Удаляем временные файлы
+            for file_path, _ in attachments:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            
+        return redirect(url_for('index'))
 
-    except Exception as e:
-        logger.exception("Ошибка при обработке HTTP-запроса")
-        return jsonify({
-            "status": "error",
-            "message": "Внутренняя ошибка сервера"
-        }), 500
+    return render_template('index.html', 
+                         topics=TOPIC_RECIPIENTS.keys(), 
+                         subcategories=SUBCATEGORIES,
+                         roles=ROLES,
+                         indicators_by_role=INDICATORS_BY_ROLE,
+                         plan_fact=PLAN_FACT)
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+if __name__ == '__main__':
+    app.run(debug=True)
