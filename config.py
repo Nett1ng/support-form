@@ -2,22 +2,19 @@
 import os
 from dotenv import load_dotenv
 
-# Загружаем переменные из файла .env (только для локальной разработки)
+# Загружаем переменные из файла .env
 load_dotenv()
 
-# ========== НАСТРОЙКИ ПОЧТЫ ==========
+# Настройки почты (пароль теперь берётся из .env)
 SMTP_SERVER = "smtp.yandex.com"
 SMTP_PORT = 587
 SMTP_LOGIN = "pirotimber@yandex.ru"
-# Пароль берётся из переменных окружения (безопасно!)
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")  # ✅ Безопасно!
 
-# ========== СЕКРЕТНЫЙ КЛЮЧ ДЛЯ FLASK ==========
-# Для Render: добавьте переменную SECRET_KEY в Environment Variables
-# Для локальной разработки: добавьте SECRET_KEY в файл .env
-SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key-change-me-in-production")
+# Секретный ключ для Flask
+SECRET_KEY = os.getenv("SECRET_KEY", "default-dev-key")  # Если нет в .env, используем запасной
 
-# ========== КОМУ ОТПРАВЛЯТЬ ПИСЬМА ==========
+# Получатели по темам (это можно оставить как было)
 TOPIC_RECIPIENTS = {
     "ЗП": "pirotimber@yandex.ru",
     "БМ": "pirotimber@yandex.ru",
@@ -26,7 +23,7 @@ TOPIC_RECIPIENTS = {
     "Общая": "pirotimber@yandex.ru"
 }
 
-# ========== ПОДКАТЕГОРИИ ДЛЯ КАЖДОЙ ТЕМЫ ==========
+# Подкатегории для каждой темы
 SUBCATEGORIES = {
     "ЗП": ["АЗК", "ФОТ", "КСП"],
     "БМ": ["Кредиты", "Кредитные карты", "Комиссионные продукты", 
@@ -37,20 +34,17 @@ SUBCATEGORIES = {
     "Общая": []
 }
 
-# ========== ДЛЯ ТЕМЫ "Квартал" ==========
-# Список доступных ролей
+# Для темы "Квартал" - РОЛИ И ПОКАЗАТЕЛИ
 ROLES = ['роль1', 'роль2', 'роль3']
 
-# Показатели для каждой роли
 INDICATORS_BY_ROLE = {
     "роль1": ["Показатель1", "Показатель2"],
     "роль2": ["Показатель3", "Показатель4"],
     "роль3": ["Показатель5", "Показатель6"]
 }
 
-# Тип: План или Факт
 PLAN_FACT = ["План", "Факт"]
 
-# ========== НАСТРОЙКИ ЗАГРУЗКИ ФАЙЛОВ ==========
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 МБ
+# Настройки файлов
+MAX_FILE_SIZE = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'xls', 'xlsx', 'png', 'jpg', 'jpeg'}
