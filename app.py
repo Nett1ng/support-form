@@ -6,16 +6,18 @@ from email.mime.base import MIMEBase
 from email import encoders
 import os
 from config import (
-    SMTP_SERVER, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD,
+    SMTP_SERVER, SMTP_PORT, SMTP_LOGIN, SMTP_PASSWORD, SECRET_KEY,
     TOPIC_RECIPIENTS, SUBCATEGORIES, ROLES, INDICATORS_BY_ROLE, PLAN_FACT,
     MAX_FILE_SIZE, ALLOWED_EXTENSIONS
 )
 
 app = Flask(__name__)
-app.secret_key = "super_secret_key"
+app.secret_key = SECRET_KEY
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def send_email(sender_email, subject, body, recipient, cc_email=None, attachments=None):
     msg = MIMEMultipart()
@@ -56,6 +58,7 @@ def send_email(sender_email, subject, body, recipient, cc_email=None, attachment
     except Exception as e:
         print(f"Ошибка отправки: {e}")
         return False
+
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -127,6 +130,7 @@ def index():
                          roles=ROLES,
                          indicators_by_role=INDICATORS_BY_ROLE,
                          plan_fact=PLAN_FACT)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
